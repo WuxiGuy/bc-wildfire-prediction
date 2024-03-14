@@ -164,3 +164,6 @@ shrapnl/
 # downloaded data
 datasets
 datasets/
+shapefiles/around_kelowna/
+prepared_dataset/*
+!prepared_dataset/dataset_splits.csv

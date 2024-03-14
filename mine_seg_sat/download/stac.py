@@ -26,7 +26,7 @@ def get_sentinel2_data(
         limit=max_items,  # This is the number of items to be returned per page
         max_items=max_items,  # This is number of items to page over
     )
-
+    print(cloud_cover)
     items = list(query.items())
     if len(items) == 0:
         raise Exception(

@@ -1,6 +1,7 @@
 import csv
 import os
 import shutil
+import pandas as pd
 
 
 def fast_scandir(dirname: str) -> list:
@@ -67,8 +68,9 @@ def move_file(source_path: str, label: str, id: int) -> None:
     file_name = source_path.split("/")[-1]
     file_date = source_path.split("/")[-4]
     destination_folder = os.path.join(os.path.dirname(
-        __file__), f"../prepare_dataset/{label}_directory_{file_date}_{id}")
+        __file__), f"../prepared_dataset/{label}_directory_{file_date}_{id}")
     destination_path = os.path.join(destination_folder, file_name)
+
 
     if not os.path.isdir(destination_folder):
         os.makedirs(destination_folder)
@@ -77,11 +79,26 @@ def move_file(source_path: str, label: str, id: int) -> None:
         print("File exists.")
         return
 
-    shutil.move(source_path, destination_path)
+    shutil.copy(source_path, destination_path)
     print(f"File copied to destination: {destination_path}.")
 
+def get_path_str(source_path: str, label: str, id: int) -> str:
+    """
+    Get the new file name after moving the file.
 
-def batch_move_files(source_path_list: list) -> None:
+    Parameters:
+    source_path: path to the file to be moved.
+    label: either "image" or "mask".
+    id: suffix to the destination folder name.
+    """
+    file_name = source_path.split("/")[-1]
+    file_date = source_path.split("/")[-4]
+    path_name = f"{label}_directory_{file_date}_{id}"
+
+    return path_name
+
+
+def batch_move_files(source_path_list: list, df: pd) -> None:
     """
     Move files from a list of source paths. In this use case, images under `tiles` folder from `download_file`
     are moved to `prepare_dataset` folder. Images that are originally inside the same directory are grouped
@@ -100,6 +117,8 @@ def batch_move_files(source_path_list: list) -> None:
 
         if current_folder not in path_dict:
             path_dict[current_folder] = len(path_dict)
+            df.loc[df['path_name_sentinel2'] == current_folder, 'data_path'] = get_path_str(current_path, "image", path_dict[current_folder])
+            df.loc[df['path_name_sentinel2'] == current_folder, 'mask_path'] = get_path_str(current_path, "mask", path_dict[current_folder])
 
         current_id = path_dict[current_folder]
 
@@ -107,6 +126,8 @@ def batch_move_files(source_path_list: list) -> None:
             move_file(current_path, "mask", current_id)
         else:
             move_file(current_path, "image", current_id)
+
+    df.to_csv('../prepared_dataset/dataset_splits.csv', index=False)
 
 
 def update_dataset_splits_csv(prepare_dataset_path: str) -> None:
@@ -117,38 +138,43 @@ def update_dataset_splits_csv(prepare_dataset_path: str) -> None:
     Parameters:
     prepare_dataset_path: path to the prepare_dataset folder.
     """
-    image_dirs = sorted([d for d in os.listdir(
-        prepare_dataset_path) if "image_directory" in d])
-    mask_dirs = sorted([d for d in os.listdir(
-        prepare_dataset_path) if "mask_directory" in d])
+    # image_dirs = sorted([d for d in os.listdir(
+    #     prepare_dataset_path) if "image_directory" in d])
+    # mask_dirs = sorted([d for d in os.listdir(
+    #     prepare_dataset_path) if "mask_directory" in d])
 
-    # Assuming the number of image directories and mask directories are the same
-    assert len(image_dirs) == len(
-        mask_dirs), "Mismatch between image and mask directories."
+    # # Assuming the number of image directories and mask directories are the same
+    # assert len(image_dirs) == len(
+    #     mask_dirs), "Mismatch between image and mask directories."
 
-    # Define the splits (you can adjust this as needed)
-    num_train = int(0.7 * len(image_dirs))
-    num_val = int(0.15 * len(image_dirs))
-    # Remaining will be test
+    # # Define the splits (you can adjust this as needed)
+    # num_train = int(0.7 * len(image_dirs))
+    # num_val = int(0.15 * len(image_dirs))
+    # # Remaining will be test
 
-    with open(os.path.join(prepare_dataset_path, "dataset_splits.csv"), "w", newline='') as csvfile:
-        csvwriter = csv.writer(csvfile)
-        csvwriter.writerow(["split", "data_path", "mask_path"])
+    # with open(os.path.join(prepare_dataset_path, "dataset_splits.csv"), "w", newline='') as csvfile:
+    #     csvwriter = csv.writer(csvfile)
+    #     csvwriter.writerow(["split", "data_path", "mask_path"])
 
-        for i, (img_dir, mask_dir) in enumerate(zip(image_dirs, mask_dirs)):
-            if i < num_train:
-                split = "train"
-            elif i < num_train + num_val:
-                split = "val"
-            else:
-                split = "test"
-            csvwriter.writerow([split, img_dir, mask_dir])
+    #     for i, (img_dir, mask_dir) in enumerate(zip(image_dirs, mask_dirs)):
+    #         if i < num_train:
+    #             split = "train"
+    #         elif i < num_train + num_val:
+    #             split = "val"
+    #         else:
+    #             split = "test"
+    #         csvwriter.writerow([split, img_dir, mask_dir])
 
 
 def main():
     # Get all folders from download_file folder
-    source_path = os.path.join(os.path.dirname(__file__), "../download_file/")
-    subfolders_list = fast_scandir(source_path)
+    # source_path = os.path.join(os.path.dirname(__file__), "../datasets/sentinel2")
+    # subfolders_list = fast_scandir(source_path)
+
+    # open csv file to dataframe
+    df = pd.read_csv('../prepared_dataset/dataset_splits.csv')
+    # Get subfolders_list from the path_name_sentinel2 column
+    subfolders_list = df['path_name_sentinel2'].tolist()
 
     # Get folders that are under tiles folder
     # note that we need the / to get folders
@@ -156,16 +182,18 @@ def main():
         "tiles/", subfolders_list)
 
     all_files = []
-
     for subfolder in subfolders_with_keyword_list:
         current_list = get_list_of_files_in_directory(subfolder)
         all_files.extend(current_list)
 
-    batch_move_files(all_files)
+    # add two column to the dataframe
+    df['data_path'] = ''
+    df['mask_path'] = ''
+    batch_move_files(all_files, df)
 
 
 if __name__ == "__main__":
     main()
-    prepare_dataset_path = os.path.join(
-        os.path.dirname(__file__), "../prepare_dataset/")
-    update_dataset_splits_csv(prepare_dataset_path)
+    # prepare_dataset_path = os.path.join(
+    #     os.path.dirname(__file__), "../prepared_dataset/")
+    # update_dataset_splits_csv(prepare_dataset_path)
