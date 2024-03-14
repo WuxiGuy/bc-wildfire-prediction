@@ -7,7 +7,7 @@ import geopandas as gpd
 import rasterio
 from rasterio.features import rasterize
 from rasterio.windows import Window
-from shapely.geometry import MultiPolygon, Polygon
+from shapely.geometry import MultiPolygon, Polygon, Point
 
 
 def get_aoi_shape(gdf: gpd.GeoDataFrame, target_crs: str) -> MultiPolygon:
@@ -32,7 +32,7 @@ def create_masks(gdf: Path, out_path: Path, bounding_box: Polygon, meta: dict):
         )
         dest.write_band(1, burned)
 
-def create_coordinates_file(bound: list, segment_output_file: Path):
+def create_coordinates_file(bound: list, original_crs: gpd.GeoDataFrame.crs, segment_output_file: Path):
     '''
     Create a json file with the coordinates of the segment
 
@@ -43,9 +43,19 @@ def create_coordinates_file(bound: list, segment_output_file: Path):
     Returns:
     None
     '''
+    tile_geometry = [Point(coord) for coord in bound]
+
+    tile_gdf = gpd.GeoDataFrame(geometry=tile_geometry)
+    tile_gdf.crs = "EPSG:32609"
+
+    tile_gdf = tile_gdf.to_crs(original_crs)
+
+    # get a list of the coordinates of the segment
+    coordinates = list(list(point.coords)[0] for point in tile_gdf.geometry)
+
     geojson_dict = {
     "geometry": {
-        "coordinates": [bound]
+        "coordinates": [coordinates]
     }
     }
     coordinate_file = segment_output_file.parent / "coordinates.json"
@@ -53,6 +63,7 @@ def create_coordinates_file(bound: list, segment_output_file: Path):
         # file does not exist, create json file
         with open(coordinate_file, 'w') as f:
             json.dump(geojson_dict, f)
+
 
 def generate_tiles(
     input_file: Path,
@@ -77,6 +88,7 @@ def generate_tiles(
         misshapen = 0
         no_mask = 0
         aoi_gdf["label"] = 1
+        original_crs = aoi_gdf.crs
         aoi_gdf = aoi_gdf.to_crs(src.crs)
         aoi = aoi_gdf.unary_union
 
@@ -126,7 +138,7 @@ def generate_tiles(
                 segment_output_file.parent.mkdir(parents=True, exist_ok=True)
 
 
-                create_coordinates_file(bound, segment_output_file)
+                create_coordinates_file(bound, original_crs, segment_output_file)
 
                 with rasterio.open(
                     segment_output_file, "w", **seg_profile

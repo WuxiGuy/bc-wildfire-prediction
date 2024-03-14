@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 import tifffile as tiff
 import torch
+import os
+import imagecodecs
 
 from mine_seg_sat.constants import (MAX_RESOLUTION, MID_RESOLUTION,
                                     MIN_RESOLUTION)
@@ -65,7 +67,8 @@ class MineSATDataset(torch.utils.data.Dataset):
         self.maskpaths = self.df.loc[
             self.df["split"] == self.split, "mask_path"
         ].tolist()
-        assert len(self.filepaths) > 0, f"No files found for split {self.split}"
+        assert len(
+            self.filepaths) > 0, f"No files found for split {self.split}"
         self.data_path = data_path
         self.index_to_rgb = {
             0: (0, 0, 0),
@@ -90,19 +93,22 @@ class MineSATDataset(torch.utils.data.Dataset):
         maskpath = self.maskpaths[index]
         high_resolution_bands = np.stack(
             [
-                tiff.imread(f"{self.data_path.as_posix()}/{filepath}/{band}.tif")
+                tiff.imread(
+                    f"{self.data_path.as_posix()}/{filepath}/{band}.tif")
                 for band in MAX_RESOLUTION
             ]
         )
         mid_resolution_bands = np.stack(
             [
-                tiff.imread(f"{self.data_path.as_posix()}/{filepath}/{band}.tif")
+                tiff.imread(
+                    f"{self.data_path.as_posix()}/{filepath}/{band}.tif")
                 for band in MID_RESOLUTION
             ]
         )
         min_resolution_bands = np.stack(
             [
-                tiff.imread(f"{self.data_path.as_posix()}/{filepath}/{band}.tif")
+                tiff.imread(
+                    f"{self.data_path.as_posix()}/{filepath}/{band}.tif")
                 for band in MIN_RESOLUTION
             ]
         )
@@ -114,13 +120,15 @@ class MineSATDataset(torch.utils.data.Dataset):
             # Rescale lower resolution bands to 10m resolution
             mid_resolution_bands = np.stack(
                 [
-                    cv2.resize(band, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+                    cv2.resize(band, None, fx=2, fy=2,
+                               interpolation=cv2.INTER_CUBIC)
                     for band in mid_resolution_bands
                 ]
             )
             min_resolution_bands = np.stack(
                 [
-                    cv2.resize(band, None, fx=6, fy=6, interpolation=cv2.INTER_CUBIC)
+                    cv2.resize(band, None, fx=6, fy=6,
+                               interpolation=cv2.INTER_CUBIC)
                     for band in min_resolution_bands
                 ]
             )
@@ -137,7 +145,8 @@ class MineSATDataset(torch.utils.data.Dataset):
 
         if callable(self.transformations) and not return_original:
             if isinstance(all_bands, np.ndarray):
-                all_bands = all_bands.transpose(1, 2, 0)  # (C, H, W) -> (H, W, C)
+                all_bands = all_bands.transpose(
+                    1, 2, 0)  # (C, H, W) -> (H, W, C)
                 if self.min_max_normalization:
                     all_bands = self.min_max_normalize(all_bands)
                 data = self.transformations(image=all_bands, mask=mask)
@@ -220,7 +229,8 @@ class MineSATDataset(torch.utils.data.Dataset):
                 ],
                 axis=-1,
             )
-            mask = tiff.imread(f"{self.data_path.as_posix()}/{paths[1]}/mask.tif")
+            mask = tiff.imread(
+                f"{self.data_path.as_posix()}/{paths[1]}/mask.tif")
             title = self.parse_title(i)
 
             axes[i, 0].imshow(image)
@@ -323,17 +333,61 @@ class MineSATDataset(torch.utils.data.Dataset):
         fig.tight_layout()
         plt.show()
 
+    # @staticmethod
+    # def display_images(image_dict):
+    #     fig, axes = plt.subplots(2, 3, figsize=(12, 8))
+    #     fig.tight_layout()
+
+    #     for i, (title, image) in enumerate(image_dict.items()):
+    #         row = i // 3
+    #         col = i % 3
+    #         axes[row, col].imshow(image)
+    #         axes[row, col].set_title(title)
+    #         axes[row, col].axis("off")
+
+    #     plt.show()
     @staticmethod
+    # def display_images(image_dict):
+    #     num_images = len(image_dict)
+    #     # Calculate the number of rows based on the number of images
+    #     num_rows = int(np.ceil(num_images / 3.0))
+    #     fig, axes = plt.subplots(num_rows, 3, figsize=(12, 4 * num_rows))
+    #     fig.tight_layout()
+    #     for i, (title, image) in enumerate(image_dict.items()):
+    #         row = i // 3
+    #         col = i % 3
+    #         if num_rows == 1:  # If there's only one row, axes is a 1D array
+    #             ax = axes[col]
+    #         else:
+    #             ax = axes[row, col]
+    #         ax.imshow(image)
+    #         ax.set_title(title)
+    #         ax.axis("off")
+    #     plt.show()
     def display_images(image_dict):
-        fig, axes = plt.subplots(2, 3, figsize=(12, 8))
+        num_images = len(image_dict)
+        # Calculate the number of rows based on the number of images
+        num_rows = int(np.ceil(num_images / 3.0))
+        fig, axes = plt.subplots(num_rows, 3, figsize=(12, 4 * num_rows))
         fig.tight_layout()
 
         for i, (title, image) in enumerate(image_dict.items()):
             row = i // 3
             col = i % 3
-            axes[row, col].imshow(image)
-            axes[row, col].set_title(title)
-            axes[row, col].axis("off")
+            if num_rows == 1:  # If there's only one row, axes is a 1D array
+                ax = axes[col]
+            else:
+                ax = axes[row, col]
+
+            # Adjust colormap and normalization for NBR
+            if title == "NBR":
+                im = ax.imshow(image, cmap=plt.cm.RdYlGn, vmin=-1, vmax=1)
+                plt.colorbar(im, ax=ax, orientation='vertical')
+            else:
+                ax.imshow(image)
+
+            ax.set_title(title)
+            ax.axis("off")
 
         plt.show()
 
@@ -360,6 +414,10 @@ class MineSATDataset(torch.utils.data.Dataset):
         )
         B04 = self.scale_band(
             tiff.imread(f"{self.data_path.as_posix()}/{filepath}/B04.tif"),
+            percentile=percentile,
+        )
+        B07 = self.scale_band(
+            tiff.imread(f"{self.data_path.as_posix()}/{filepath}/B07.tif"),
             percentile=percentile,
         )
         B08 = self.scale_band(
@@ -399,11 +457,18 @@ class MineSATDataset(torch.utils.data.Dataset):
         # Create a color image using RGB bands
         RGB = np.stack([B04, B03, B02], axis=-1)
 
+        # Upscale B07 to match the resolution of B04
+        B07_rescaled = cv2.resize(
+            B07, (B04.shape[1], B04.shape[0]), interpolation=cv2.INTER_CUBIC)
+
+        # Now compute NBR
+        NBR = (B08 - B07_rescaled) / (B08 + B07_rescaled)
         # Create a false-color composite image
         false_color = np.stack([B08, B04, B03], axis=-1)
 
         self.display_images(
             {
+                "NBR": NBR,
                 "NDVI": NDVI,
                 "NDBI": NDBI,
                 "NDWI": NDWI,
@@ -412,3 +477,158 @@ class MineSATDataset(torch.utils.data.Dataset):
                 "Mask": mask,
             }
         )
+
+    def safe_divide(self, numerator, denominator):
+        """Safely divide two arrays and handle division by zero."""
+        with np.errstate(divide='ignore', invalid='ignore'):
+            result = numerator / denominator
+            result[~np.isfinite(result)] = 0  # Replace -inf, inf, NaN with 0
+        return result
+
+    def get_images(self, index: int, percentile: int = 95):
+        """
+        Generate Sentinel-2 images from the given filepath. The returned images are as follows:
+
+        NDVI: Normalized Difference Vegetation Index
+        NDBI: Normalized Difference Built-up Index
+        NDWI: Normalized Difference Water Index
+        False Color: B08, B04, B03
+        Mask: The class labels for each pixel
+        """
+        # Unpack the bands
+        image_dict = {}  # Initialize an empty dictionary to store images
+
+        try:
+            filepath = self.filepaths[index]
+            maskpath = self.maskpaths[index]
+            B02 = self.scale_band(
+                tiff.imread(f"{self.data_path.as_posix()}/{filepath}/B02.tif"),
+                percentile=percentile,
+            )
+            B03 = self.scale_band(
+                tiff.imread(f"{self.data_path.as_posix()}/{filepath}/B03.tif"),
+                percentile=percentile,
+            )
+            B04 = self.scale_band(
+                tiff.imread(f"{self.data_path.as_posix()}/{filepath}/B04.tif"),
+                percentile=percentile,
+            )
+            B07 = self.scale_band(
+                tiff.imread(f"{self.data_path.as_posix()}/{filepath}/B07.tif"),
+                percentile=percentile,
+            )
+            B08 = self.scale_band(
+                tiff.imread(f"{self.data_path.as_posix()}/{filepath}/B08.tif"),
+                percentile=percentile,
+            )
+
+            B11 = cv2.resize(
+                tiff.imread(f"{self.data_path.as_posix()}/{filepath}/B11.tif"),
+                None,
+                fx=2,
+                fy=2,
+                interpolation=cv2.INTER_CUBIC,
+            )
+            B12 = cv2.resize(
+                tiff.imread(f"{self.data_path.as_posix()}/{filepath}/B12.tif"),
+                None,
+                fx=2,
+                fy=2,
+                interpolation=cv2.INTER_CUBIC,
+            )
+            B11 = self.scale_band(B11, percentile=percentile)
+            B12 = self.scale_band(B12, percentile=percentile)
+
+            mask = tiff.imread(
+                f"{self.data_path.as_posix()}/{maskpath}/mask.tif")
+            mask = self.colorize_mask(mask)
+
+            # Calculate NDVI (Normalized Difference Vegetation Index)
+            NDVI = self.safe_divide(B08 - B04, B08 + B04)
+
+            # Create a color image using RGB bands
+            RGB = np.stack([B04, B03, B02], axis=-1)
+
+            # Upscale B07 to match the resolution of B04
+            B07_rescaled = cv2.resize(
+                B07, (B04.shape[1], B04.shape[0]), interpolation=cv2.INTER_CUBIC)
+
+            # Now compute NBR
+            NBR = self.safe_divide(B08 - B07_rescaled, B08 + B07_rescaled)
+            # Create a false-color composite image
+            false_color = np.stack([B08, B04, B03], axis=-1)
+
+            # Compute NDWI
+            NDWI = self.safe_divide(B03 - B08, B08 + B03)
+
+            # Add to the dictionary
+            image_dict["NBR"] = NBR
+            image_dict["NDVI"] = NDVI
+            image_dict["RGB"] = RGB
+            image_dict["NDWI"] = NDWI
+
+        except FileNotFoundError as e:
+            print(f"File not found: {e}")
+            # Additional error handling can be done here if needed
+        return image_dict
+
+    def downsample(self, image, scale_factor):
+
+        if not (0 < scale_factor < 1):
+            raise ValueError("Scale factor must be between 0 and 1.")
+        dimensions = (int(image.shape[1] * scale_factor),
+                      int(image.shape[0] * scale_factor))
+        downsampled_image = cv2.resize(
+            image, dimensions, interpolation=cv2.INTER_AREA)
+        return downsampled_image
+
+    def upsample(self, image, target_shape):
+        upsampled_image = cv2.resize(
+            image, (target_shape[1], target_shape[0]), interpolation=cv2.INTER_CUBIC)
+        return upsampled_image
+
+    def get_numerical_values(self, index: int, percentile: int = 95, scale_factor: float = 0.05):
+        # Assuming that all the necessary functions and variables are defined elsewhere in the class
+        try:
+            filepath = self.filepaths[index]
+            print(f"Filepath: {filepath}")
+
+            # Load and scale the bands
+            B04 = self.downsample(self.scale_band(tiff.imread(
+                f"{self.data_path.as_posix()}/{filepath}/B04.tif"), percentile=percentile), scale_factor)
+            B07 = self.downsample(self.scale_band(tiff.imread(
+                f"{self.data_path.as_posix()}/{filepath}/B07.tif"), percentile=percentile), scale_factor)
+            B08 = self.downsample(self.scale_band(tiff.imread(
+                f"{self.data_path.as_posix()}/{filepath}/B08.tif"), percentile=percentile), scale_factor)
+            B03 = self.downsample(self.scale_band(tiff.imread(
+                f"{self.data_path.as_posix()}/{filepath}/B03.tif"), percentile=percentile), scale_factor)
+            B02 = self.downsample(self.scale_band(tiff.imread(
+                f"{self.data_path.as_posix()}/{filepath}/B02.tif"), percentile=percentile), scale_factor)
+
+            # Calculate NDVI and NBR indices
+            NDVI = (B08 - B04) / (B08 + B04)
+            B07_upsampled = self.upsample(B07, B08.shape)
+            NBR = (B08 - B07_upsampled) / (B08 + B07_upsampled)
+
+            # Compute NDWI
+            NDWI = self.safe_divide(B03 - B08, B08 + B03)
+
+            # Create a color image using RGB bands
+            RGB = np.stack([B04, B03, B02], axis=-1)
+
+
+            location_info = os.path.basename(filepath)
+            print(f"Location info: {location_info}")
+
+            # Return as dictionary
+            return {
+                "NDVI": NDVI,
+                "NBR": NBR,
+                "NDWI": NDWI,
+                "RGB": RGB,
+                "Location": location_info
+            }
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return {}
