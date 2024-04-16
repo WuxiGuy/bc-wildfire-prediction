@@ -1,15 +1,41 @@
-# MineSegSAT
+# bc-wildfire-prediction
 
-This repository is an implementation of [MineSegSAT](https://arxiv.org/abs/2311.01676), presented at [ECRS 2023](https://ecrs2023.sciforum.net/). MineSegSAT is a deep learning model that identifies environmentally impacted areas of mineral extraction sites using the [SegFormer](https://arxiv.org/abs/2105.15203) model architecture trained on Sentinel-2 data.
+This repository is dedicated to predicting wildfires in the British Columbia region using satellite imagery data. The primary goal is to leverage machine learning techniques to analyze and process satellite imagery for accurate wildfire detection.
 
-## Installation
+## Directory Structure
 
-This project uses poetry as a package manager which can be installed by following the instructions found [here](https://python-poetry.org/docs/#installation).
+- `sat_log_file/` - Contains functions and scripts for satellite image processing.
+- `shapefiles/` - QGIS files for geographic region selection.
 
-To install the dependencies in this project run the following command while your virtual environment is activated:
+## Satellite Image Processing
 
-```bash
-poetry install
-```
+There are two main approaches to processing satellite images contained within this repository:
 
-Data that accompanies this repository can be downloaded from [here](https://drive.google.com/drive/folders/1FMruAwQeOB0T8BunxzBmjQI5R5uj6wAp?usp=sharing). A sample configuration file that could be used for training a model on the provided dataset can be found in the `configs` directory.
+### Specific Function Notebooks
+
+- `download_sentinel2.ipynb`: Download Sentinel-2 images and split into uniform square tiles including various bands and mask files.
+- `file_extraction_sentinel2.ipynb`, `file_extraction_sentinel.ipynb`: Organize the file paths of the satellite tiles and the fire occurrence data into CSV format.
+- `initial_data_generation.ipynb`: Combine satellite images with fire information, adding an `if_fire` column to denote fire events.
+- `image_process.ipynb`, `organize_download_images.py`, `save_processed_image.ipynb`: Compute necessary indices for model training from the bands, numerically transform the results, and store them as PNG files for future processing.
+
+### Integrated Notebook
+
+- `earth_platform_download.ipynb`: Consolidates the aforementioned processing steps into one comprehensive notebook.
+
+## Model Training Notebooks
+
+The notebooks within the `notebooks_models/` folder are designed for training the machine learning models. Each model is tailored to predict wildfire occurrences using the processed satellite data.
+
+## Usage
+
+To utilize this repository:
+
+1. Begin with the `download_sentinel2.ipynb` notebook to download and preprocess satellite imagery.
+2. Employ `file_extraction_sentinel*.ipynb` notebooks to structure the satellite tile information and fire data into CSV files.
+3. Use `initial_data_generation.ipynb` to merge satellite data with fire incidents.
+4. Execute `image_process.ipynb`, `organize_download_images.py`, and `save_processed_image.ipynb` for feature extraction and preparation for model training.
+5. Alternatively, run `earth_platform_download.ipynb` for an end-to-end data processing workflow.
+6. Navigate to the `notebooks_models/` directory to train the respective machine learning models.
+
+Ensure that all necessary dependencies are installed and the QGIS shapefiles are correctly set up within the `shapefiles/` directory before running the notebooks.
+

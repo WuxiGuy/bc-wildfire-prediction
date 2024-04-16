@@ -2,10 +2,10 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
-from mine_seg_sat.config import TrainingConfig
-from mine_seg_sat.dataset import MineSATDataset
-from mine_seg_sat.train_utils.scale import get_band_norm_values_from_root
-from mine_seg_sat.train_utils.transforms import (
+from sat_log_file.config import TrainingConfig
+from sat_log_file.dataset import MineSATDataset
+from sat_log_file.train_utils.scale import get_band_norm_values_from_root
+from sat_log_file.train_utils.transforms import (
     get_test_transforms,
     get_training_transforms,
     get_validation_transforms,

@@ -1,31 +1,28 @@
-import os
 import json
-import requests
-from pathlib import Path
+import os
 import sys
 from datetime import datetime
+from pathlib import Path
 
 import geopandas as gpd
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+import requests
 from dotenv import load_dotenv
-from pystac_client import Client
 from pystac.item import Item
+from pystac_client import Client
 from shapely.geometry import Polygon
 from shapely.prepared import prep
 
 project_path = os.environ.get('PROJECT_PATH')
 sys.path.append(project_path)
-from mine_seg_sat.download.stac import (
-    get_sentinel2_data,
-    remove_small_tiles,
-    add_geometries_iteratively,
-    download_files_for_item
-)
-from mine_seg_sat.utils.bands import get_band_specification
-from mine_seg_sat.constants import EXTRACTED_BANDS
-from mine_seg_sat.download.tile import generate_tiles
+from sat_log_file.constants import EXTRACTED_BANDS
+from sat_log_file.download.stac import (add_geometries_iteratively,
+                                        download_files_for_item,
+                                        get_sentinel2_data, remove_small_tiles)
+from sat_log_file.download.tile import generate_tiles
+from sat_log_file.utils.bands import get_band_specification
 
 # load_dotenv()
 
@@ -151,7 +148,7 @@ polygons = partition(areas_geojson.iloc[0].geometry, 5)
 #            ["2022-08-22", "2022-09-10"], ["2022-09-11", "2022-09-23"],
 
 date_list = [["2022-06-27", "2022-06-30"],
-            ["2022-07-13", "2022-07-15"], 
+            ["2022-07-13", "2022-07-15"],
             ["2022-07-21", "2022-07-26"], ["2022-07-30", "2022-08-02"], ["2022-08-08", "2022-08-19"],
             ["2022-08-22", "2022-09-10"], ["2022-09-11", "2022-09-23"], ["2022-09-25", "2022-10-10"],
             ["2022-10-12", "2022-10-24"], ["2022-11-15", "2022-11-20"]]

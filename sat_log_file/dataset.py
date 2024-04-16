@@ -11,7 +11,7 @@ import torch
 import os
 import imagecodecs
 
-from mine_seg_sat.constants import (MAX_RESOLUTION, MID_RESOLUTION,
+from sat_log_file.constants import (MAX_RESOLUTION, MID_RESOLUTION,
                                     MIN_RESOLUTION)
 
 

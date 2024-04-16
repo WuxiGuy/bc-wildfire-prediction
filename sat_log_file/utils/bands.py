@@ -3,7 +3,7 @@ import sys
 sys.path.append('/Users/glenn_hyh/Documents/github/bc-wildfire-prediction')
 
 
-from mine_seg_sat.constants import (
+from sat_log_file.constants import (
     MAX_RESOLUTION,
     MAX_RESOLUTION_SIZE,
     MID_RESOLUTION,

@@ -7,7 +7,7 @@ from typing import Optional
 
 import torch
 
-from mine_seg_sat.config import TrainingConfig
+from sat_log_file.config import TrainingConfig
 
 
 def get_checkpoint_path(out_path: Path, model_type: str, model_directory: str) -> Path:
